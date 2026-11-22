@@ -1,0 +1,81 @@
+# Workflow ÚNICO do pipeline MLOps (Trabalho N3 - Análise Preditiva)
+# Agendamento -> dados -> ETL -> votação -> competição A x B -> promoção -> previsões -> evidências
+name: pipeline-mlops-n3
+
+on:
+  schedule:
+    # A cada 30 min (minutos "quebrados" porque o GitHub atrasa mais os horários cheios).
+    # Depois de obter as evidências, troque para semanal, ex.: "23 9 * * 1".
+    - cron: "17,47 * * * *"
+  workflow_dispatch: {}   # execução manual apenas para depuração
+
+permissions:
+  contents: write         # para versionar o estado do pipeline (modelo vigente, MLflow, evidências)
+
+concurrency:
+  group: pipeline-mlops-n3
+  cancel-in-progress: false   # ciclos nunca rodam em paralelo
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+      PYTHONHASHSEED: "0"
+    steps:
+      - name: Obter código, dados e estado persistente (último commit)
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Instalar dependências
+        run: python -m pip install -r requirements.txt
+
+      - name: "01 · ETL, validação, drift e versionamento dos dados"
+        run: jupyter nbconvert --to notebook --execute notebooks/01_etl.ipynb --ExecutePreprocessor.timeout=900 --output-dir artifacts/notebooks_executados --output 01_etl_executado.ipynb
+
+      - name: "02 · Três métodos de seleção + votação de features"
+        run: jupyter nbconvert --to notebook --execute notebooks/02_votacao_features.ipynb --ExecutePreprocessor.timeout=900 --output-dir artifacts/notebooks_executados --output 02_votacao_features_executado.ipynb
+
+      - name: "03 · Treino e competição (Ridge x Random Forest)"
+        run: jupyter nbconvert --to notebook --execute notebooks/03_treino_competicao.ipynb --ExecutePreprocessor.timeout=900 --output-dir artifacts/notebooks_executados --output 03_treino_competicao_executado.ipynb
+
+      - name: "04 · Eleição do vencedor e regra de promoção"
+        run: jupyter nbconvert --to notebook --execute notebooks/04_selecao_promocao.ipynb --ExecutePreprocessor.timeout=900 --output-dir artifacts/notebooks_executados --output 04_selecao_promocao_executado.ipynb
+
+      - name: "05 · Previsões com o modelo vigente"
+        run: jupyter nbconvert --to notebook --execute notebooks/05_previsoes.ipynb --ExecutePreprocessor.timeout=900 --output-dir artifacts/notebooks_executados --output 05_previsoes_executado.ipynb
+
+      - name: Evidências do ciclo + resumo + alerta de drift
+        run: python -m src.finalizar_ciclo
+
+      # Só chega aqui se TODAS as etapas passaram: falhas não persistem promoção indevida.
+      - name: Persistir estado no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/processed data/state models evidencias mlflow.db mlartifacts
+          if git diff --cached --quiet; then
+            echo "Nada a versionar."
+          else
+            git commit -m "ciclo ${CYCLE_ID}: modelo ${DECISAO} (gatilho: ${{ github.event_name }})"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Publicar pacote de resultados (artifact baixável)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-ciclo-${{ github.run_number }}
+          path: |
+            artifacts/
+            evidencias/
+            models/modelo_vigente.json
+            mlflow.db
+          retention-days: 30

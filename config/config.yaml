@@ -1,0 +1,87 @@
+# Configuração única do pipeline MLOps - Trabalho N3 (Análise Preditiva)
+# Todas as decisões metodológicas foram fixadas ANTES do primeiro treinamento.
+
+projeto:
+  nome: n3-resistencia-concreto
+  seed: 42
+
+dados:
+  fonte_original: data/source/concrete_uci.csv   # UCI Concrete Compressive Strength (CC BY 4.0)
+  lotes_dir: data/raw                            # lotes que "chegam" a cada ciclo
+  holdout_dir: data/holdout                      # validação fixa + teste reservado
+  treino_acumulado: data/processed/treino_acumulado.csv
+  estado: data/state/estado_ingestao.json
+  alvo: resistencia
+  atributos_originais:
+    - cimento
+    - escoria
+    - cinza_volante
+    - agua
+    - superplastificante
+    - agregado_graudo
+    - agregado_miudo
+    - idade
+  frac_teste: 0.20        # reservado: só é usado no notebook 05 / relatório
+  frac_validacao: 0.15    # fixo entre ciclos: decide vencedor e promoção
+
+# Regras de validação (linhas que violam são rejeitadas no ETL)
+validacao:
+  minimos:
+    cimento: 50
+    escoria: 0
+    cinza_volante: 0
+    agua: 100
+    superplastificante: 0
+    agregado_graudo: 500
+    agregado_miudo: 400
+    idade: 1
+    resistencia: 0
+  maximos:
+    cimento: 600
+    escoria: 400
+    cinza_volante: 250
+    agua: 260
+    superplastificante: 40
+    agregado_graudo: 1200
+    agregado_miudo: 1050
+    idade: 365
+    resistencia: 100
+
+votacao:
+  metodos: [selectkbest_f_regression, importancia_random_forest, rfe_ridge]
+  top_k: 5              # cada método vota nas suas 5 melhores features
+  votos_minimos: 2      # feature eleita se aprovada por >= 2 dos 3 métodos
+  min_features: 4       # se menos que isso, completa pelo menor ranking médio
+  desempate: ranking_medio
+
+modelos:
+  A:
+    algoritmo: ridge
+    params:
+      alpha: 1.0
+  B:
+    algoritmo: random_forest
+    params:
+      n_estimators: 100
+      max_depth: 12
+      min_samples_leaf: 2
+
+avaliacao:
+  metrica_principal: mae     # erro absoluto médio, em MPa
+  direcao: minimizar
+  cv_folds: 5                # CV no treino (informativo)
+  # decisão: MAE na validação fixa (não usada em seleção nem treino)
+
+promocao:
+  melhoria_minima_relativa: 0.02   # desafiante precisa ser >= 2% melhor que o vigente
+  exigir_melhor_que_baseline: true # e melhor que prever a média (DummyRegressor)
+
+drift:                       # recurso adicional (critério 10)
+  teste: kolmogorov_smirnov
+  alpha: 0.05
+  fracao_alerta: 0.25        # alerta se >= 25% das variáveis apresentarem drift
+
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
+  artifacts_dir: mlartifacts
+  experimento: n3-resistencia-concreto
