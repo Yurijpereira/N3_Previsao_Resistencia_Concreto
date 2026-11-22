@@ -1,0 +1,12 @@
+{
+  "lotes_processados": [
+    "lote_01.csv"
+  ],
+  "ciclos": [
+    {
+      "cycle_id": "c20261122T161514Z-gh1",
+      "lote": "lote_01.csv",
+      "data_version": "v1-91bac956"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "cycle_id": "c20261122T161514Z-gh1",
+  "data_version": "v1-91bac956",
+  "algoritmo": "random_forest",
+  "candidato": "B",
+  "features": [
+    "aglomerante_total",
+    "relacao_agua_cimento",
+    "log_idade",
+    "relacao_agua_aglomerante",
+    "idade"
+  ],
+  "metrica": "mae",
+  "val_mae": 5.331081308868057,
+  "val_rmse": 7.045998456556348,
+  "val_r2": 0.8238773619940559,
+  "run_id": "3248a8cbb1754dc38bdd69e081df704b",
+  "mlflow_model_uri": "runs:/3248a8cbb1754dc38bdd69e081df704b/modelo",
+  "decisao": "promovido",
+  "motivo": "não há modelo vigente: primeiro modelo é promovido",
+  "arquivo_modelo": "models/historico/modelo_c20261122T161514Z-gh1_random_forest.joblib",
+  "promovido_em": "2026-11-22T16:15:36+00:00",
+  "anterior": null,
+  "ultima_avaliacao": {
+    "cycle_id": "c20261122T161514Z-gh1",
+    "data_version": "v1-91bac956",
+    "decisao": "promovido",
+    "motivo": "não há modelo vigente: primeiro modelo é promovido",
+    "desafiante": "random_forest",
+    "mae_desafiante": 5.331081308868057,
+    "mae_vigente_reavaliado": null,
+    "run_id_desafiante": "3248a8cbb1754dc38bdd69e081df704b"
+  }
+}
