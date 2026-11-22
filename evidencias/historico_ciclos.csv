@@ -1,2 +1,3 @@
 cycle_id,gatilho,lote,data_version,n_treino,features_eleitas,mae_ridge,mae_random_forest,vencedor,mae_vigente_antes,decisao,vigente_apos,drift_alerta
 c20261122T161514Z-gh1,workflow_dispatch,lote_01.csv,v1-91bac956,336,aglomerante_total|relacao_agua_cimento|log_idade|relacao_agua_aglomerante|idade,7.7944,5.3311,random_forest,,promovido,random_forest@c20261122T161514Z-gh1,False
+c20261122T215332Z-gh2,schedule,lote_02.csv,v2-fb30fed2,436,aglomerante_total|log_idade|relacao_agua_cimento|relacao_agua_aglomerante|idade,7.9036,4.9382,random_forest,5.3311,promovido,random_forest@c20261122T215332Z-gh2,False

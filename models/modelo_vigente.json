@@ -1,34 +1,41 @@
 {
-  "cycle_id": "c20261122T161514Z-gh1",
-  "data_version": "v1-91bac956",
+  "cycle_id": "c20261122T215332Z-gh2",
+  "data_version": "v2-fb30fed2",
   "algoritmo": "random_forest",
   "candidato": "B",
   "features": [
     "aglomerante_total",
-    "relacao_agua_cimento",
     "log_idade",
+    "relacao_agua_cimento",
     "relacao_agua_aglomerante",
     "idade"
   ],
   "metrica": "mae",
-  "val_mae": 5.331081308868057,
-  "val_rmse": 7.045998456556348,
-  "val_r2": 0.8238773619940559,
-  "run_id": "3248a8cbb1754dc38bdd69e081df704b",
-  "mlflow_model_uri": "runs:/3248a8cbb1754dc38bdd69e081df704b/modelo",
+  "val_mae": 4.938242489625901,
+  "val_rmse": 6.640743994833403,
+  "val_r2": 0.843554321615412,
+  "run_id": "5f280380f0e9481d9b798bbbbdc04091",
+  "mlflow_model_uri": "runs:/5f280380f0e9481d9b798bbbbdc04091/modelo",
   "decisao": "promovido",
-  "motivo": "não há modelo vigente: primeiro modelo é promovido",
-  "arquivo_modelo": "models/historico/modelo_c20261122T161514Z-gh1_random_forest.joblib",
-  "promovido_em": "2026-11-22T16:15:36+00:00",
-  "anterior": null,
-  "ultima_avaliacao": {
+  "motivo": "melhoria de 7.4% >= 2% (MAE 5.331 -> 4.938)",
+  "arquivo_modelo": "models/historico/modelo_c20261122T215332Z-gh2_random_forest.joblib",
+  "promovido_em": "2026-11-22T21:54:00+00:00",
+  "anterior": {
     "cycle_id": "c20261122T161514Z-gh1",
+    "algoritmo": "random_forest",
     "data_version": "v1-91bac956",
+    "val_mae": 5.331081308868057,
+    "run_id": "3248a8cbb1754dc38bdd69e081df704b",
+    "arquivo_modelo": "models/historico/modelo_c20261122T161514Z-gh1_random_forest.joblib"
+  },
+  "ultima_avaliacao": {
+    "cycle_id": "c20261122T215332Z-gh2",
+    "data_version": "v2-fb30fed2",
     "decisao": "promovido",
-    "motivo": "não há modelo vigente: primeiro modelo é promovido",
+    "motivo": "melhoria de 7.4% >= 2% (MAE 5.331 -> 4.938)",
     "desafiante": "random_forest",
-    "mae_desafiante": 5.331081308868057,
-    "mae_vigente_reavaliado": null,
-    "run_id_desafiante": "3248a8cbb1754dc38bdd69e081df704b"
+    "mae_desafiante": 4.938242489625901,
+    "mae_vigente_reavaliado": 5.331081308868057,
+    "run_id_desafiante": "5f280380f0e9481d9b798bbbbdc04091"
   }
 }
