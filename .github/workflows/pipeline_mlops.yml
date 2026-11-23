@@ -6,7 +6,7 @@ on:
   schedule:
     # A cada 30 min (minutos "quebrados" porque o GitHub atrasa mais os horários cheios).
     # Depois de obter as evidências, troque para semanal, ex.: "23 9 * * 1".
-    - cron: "17,47 * * * *"
+    - cron: "23 9 * * 1"
   workflow_dispatch: {}   # execução manual apenas para depuração
 
 permissions:
