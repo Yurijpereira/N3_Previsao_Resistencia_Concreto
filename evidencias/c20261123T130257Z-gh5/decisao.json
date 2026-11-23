@@ -1,0 +1,17 @@
+{
+  "cycle_id": "c20261123T130257Z-gh5",
+  "data_version": "v4-6e425ef4",
+  "vencedor": "B",
+  "vencedor_algoritmo": "random_forest",
+  "mae_vencedor": 4.2644,
+  "mae_perdedor": 6.1201,
+  "mae_vigente_antes": 4.2644,
+  "baseline_val_mae": 13.6238,
+  "decisao": "mantido",
+  "motivo": "melhoria de 0.0% < 2% exigidos (vigente 4.264 x desafiante 4.264)",
+  "vigente_apos": {
+    "cycle_id": "c20261123T090417Z-gh4",
+    "algoritmo": "random_forest",
+    "val_mae": 4.2643662207813575
+  }
+}

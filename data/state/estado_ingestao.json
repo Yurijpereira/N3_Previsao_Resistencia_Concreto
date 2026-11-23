@@ -25,6 +25,11 @@
       "cycle_id": "c20261123T090417Z-gh4",
       "lote": "lote_04.csv",
       "data_version": "v4-6e425ef4"
+    },
+    {
+      "cycle_id": "c20261123T130257Z-gh5",
+      "lote": null,
+      "data_version": "v4-6e425ef4"
     }
   ]
 }
