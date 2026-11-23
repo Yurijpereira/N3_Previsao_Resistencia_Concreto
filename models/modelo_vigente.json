@@ -1,41 +1,41 @@
 {
-  "cycle_id": "c20261123T025339Z-gh3",
-  "data_version": "v3-ac533899",
+  "cycle_id": "c20261123T090417Z-gh4",
+  "data_version": "v4-6e425ef4",
   "algoritmo": "random_forest",
   "candidato": "B",
   "features": [
     "aglomerante_total",
     "log_idade",
-    "relacao_agua_cimento",
     "relacao_agua_aglomerante",
-    "idade"
+    "idade",
+    "relacao_agua_cimento"
   ],
   "metrica": "mae",
-  "val_mae": 4.560007889121022,
-  "val_rmse": 6.381924293824451,
-  "val_r2": 0.8555114640867035,
-  "run_id": "61fba9214c8f49828c328fd16fa12410",
-  "mlflow_model_uri": "runs:/61fba9214c8f49828c328fd16fa12410/modelo",
+  "val_mae": 4.2643662207813575,
+  "val_rmse": 6.118857429221867,
+  "val_r2": 0.8671777714697895,
+  "run_id": "655f35ab0d4541b3b6cb041c964b2045",
+  "mlflow_model_uri": "runs:/655f35ab0d4541b3b6cb041c964b2045/modelo",
   "decisao": "promovido",
-  "motivo": "melhoria de 7.7% >= 2% (MAE 4.938 -> 4.560)",
-  "arquivo_modelo": "models/historico/modelo_c20261123T025339Z-gh3_random_forest.joblib",
-  "promovido_em": "2026-11-23T02:54:00+00:00",
+  "motivo": "melhoria de 6.5% >= 2% (MAE 4.560 -> 4.264)",
+  "arquivo_modelo": "models/historico/modelo_c20261123T090417Z-gh4_random_forest.joblib",
+  "promovido_em": "2026-11-23T09:04:45+00:00",
   "anterior": {
-    "cycle_id": "c20261122T215332Z-gh2",
+    "cycle_id": "c20261123T025339Z-gh3",
     "algoritmo": "random_forest",
-    "data_version": "v2-fb30fed2",
-    "val_mae": 4.938242489625901,
-    "run_id": "5f280380f0e9481d9b798bbbbdc04091",
-    "arquivo_modelo": "models/historico/modelo_c20261122T215332Z-gh2_random_forest.joblib"
+    "data_version": "v3-ac533899",
+    "val_mae": 4.560007889121022,
+    "run_id": "61fba9214c8f49828c328fd16fa12410",
+    "arquivo_modelo": "models/historico/modelo_c20261123T025339Z-gh3_random_forest.joblib"
   },
   "ultima_avaliacao": {
-    "cycle_id": "c20261123T025339Z-gh3",
-    "data_version": "v3-ac533899",
+    "cycle_id": "c20261123T090417Z-gh4",
+    "data_version": "v4-6e425ef4",
     "decisao": "promovido",
-    "motivo": "melhoria de 7.7% >= 2% (MAE 4.938 -> 4.560)",
+    "motivo": "melhoria de 6.5% >= 2% (MAE 4.560 -> 4.264)",
     "desafiante": "random_forest",
-    "mae_desafiante": 4.560007889121022,
-    "mae_vigente_reavaliado": 4.9382424896259005,
-    "run_id_desafiante": "61fba9214c8f49828c328fd16fa12410"
+    "mae_desafiante": 4.2643662207813575,
+    "mae_vigente_reavaliado": 4.560007889121021,
+    "run_id_desafiante": "655f35ab0d4541b3b6cb041c964b2045"
   }
 }
