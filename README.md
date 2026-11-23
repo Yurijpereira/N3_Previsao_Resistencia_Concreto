@@ -38,7 +38,7 @@ mlflow.db + mlartifacts/               # tracking MLflow (versionado no reposit�
 evidencias/<cycle_id>/                 # votação, comparação, decisão, drift, previsões, notebooks executados
 evidencias/historico_ciclos.csv        # uma linha por ciclo
 reports/relatorio_n3.pdf
-scripts/                               # preparar_lotes, executar_ciclo (local), reset_estado
+scripts/                               # preparar_lotes, executar_ciclo (local), reset_estado, gerar_relatorio
 ```
 
 ## 3. Instalação e execução local
@@ -55,13 +55,24 @@ No Windows sem bash, rode os comandos `jupyter nbconvert --to notebook --execute
 ## 4. Execução agendada (GitHub Actions)
 1. Suba o repositório no GitHub (branch padrão `main`).
 2. Vá em **Settings → Actions → General → Workflow permissions** e marque **Read and write permissions**.
-3. O workflow roda pelo `cron` (`17,47 * * * *`, a cada 30 min). O GitHub pode atrasar o agendamento.
+3. O workflow roda pelo `cron`. Durante a coleta de evidências ele rodou a cada 30 min (`17,47 * * * *`). Agora está semanal (`23 9 * * 1`, segunda 06:23 BRT). O GitHub pode atrasar o agendamento.
 4. Ao fim de cada execução, o próprio workflow faz **commit do estado** (MLflow, modelo vigente, evidências) e publica
    um **artifact** `resultados-ciclo-N`. O próximo ciclo parte desse estado; nada depende do runner anterior.
 5. O **resumo da execução** (aba *Summary*) mostra a decisão do ciclo e o **alerta de drift**, quando houver.
-6. Depois de juntar evidências, troque o cron para algo semanal (ex.: `23 9 * * 1`).
+6. Para demonstrar de novo, use **Run workflow** (workflow_dispatch) ou volte o cron para uma frequência maior.
 
 Se qualquer etapa falhar, o job para antes do commit, e **nenhuma promoção é persistida**.
+
+### Resultados obtidos no GitHub Actions
+| Ciclo | Gatilho | Lote | MAE val Ridge | MAE val RF | Decisão | Drift |
+|---|---|---|---|---|---|---|
+| 1 | workflow_dispatch | lote_01 | 7,794 | 5,331 | promovido (1º modelo) | - |
+| 2 | **schedule** | lote_02 | 7,904 | 4,938 | promovido (+7,4%) | não |
+| 3 | **schedule** | lote_03 | 7,722 | 4,560 | promovido (+7,7%) | não |
+| 4 | workflow_dispatch | lote_04 | 6,120 | 4,264 | promovido (+6,5%) | **alerta (7/9 variáveis)** |
+| 5 | **schedule** | sem lote novo | 6,120 | 4,264 | **mantido** (0% < 2%) | - |
+
+O modelo vigente final é o Random Forest do ciclo 4, com MAE de **4,67 MPa** e R² de 0,867 no teste reservado. Os detalhes de cada ciclo estão em `evidencias/<cycle_id>/` e `evidencias/historico_ciclos.csv`. O relatório completo está em `reports/relatorio_n3.pdf`, gerado por `python scripts/gerar_relatorio.py --repo <link>`.
 
 ## 5. Consultar o MLflow
 ```bash
