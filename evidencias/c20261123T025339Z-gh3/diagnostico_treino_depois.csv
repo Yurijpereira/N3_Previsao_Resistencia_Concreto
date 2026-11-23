@@ -1,0 +1,10 @@
+coluna,ausentes,fora_da_faixa,outliers_iqr,min,mediana,max
+cimento,0,0,0,108.3,252.3,540.0
+escoria,0,0,0,0.0,22.0,359.4
+cinza_volante,0,0,0,0.0,77.5,200.1
+agua,0,0,6,121.8,183.0,237.0
+superplastificante,3,0,4,0.0,7.0,32.2
+agregado_graudo,0,0,0,801.0,968.0,1134.3
+agregado_miudo,0,0,27,594.0,780.6,992.6
+idade,0,0,0,1.0,28.0,56.0
+resistencia,0,0,4,3.32,31.4,74.7

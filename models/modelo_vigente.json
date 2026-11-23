@@ -1,6 +1,6 @@
 {
-  "cycle_id": "c20261122T215332Z-gh2",
-  "data_version": "v2-fb30fed2",
+  "cycle_id": "c20261123T025339Z-gh3",
+  "data_version": "v3-ac533899",
   "algoritmo": "random_forest",
   "candidato": "B",
   "features": [
@@ -11,31 +11,31 @@
     "idade"
   ],
   "metrica": "mae",
-  "val_mae": 4.938242489625901,
-  "val_rmse": 6.640743994833403,
-  "val_r2": 0.843554321615412,
-  "run_id": "5f280380f0e9481d9b798bbbbdc04091",
-  "mlflow_model_uri": "runs:/5f280380f0e9481d9b798bbbbdc04091/modelo",
+  "val_mae": 4.560007889121022,
+  "val_rmse": 6.381924293824451,
+  "val_r2": 0.8555114640867035,
+  "run_id": "61fba9214c8f49828c328fd16fa12410",
+  "mlflow_model_uri": "runs:/61fba9214c8f49828c328fd16fa12410/modelo",
   "decisao": "promovido",
-  "motivo": "melhoria de 7.4% >= 2% (MAE 5.331 -> 4.938)",
-  "arquivo_modelo": "models/historico/modelo_c20261122T215332Z-gh2_random_forest.joblib",
-  "promovido_em": "2026-11-22T21:54:00+00:00",
+  "motivo": "melhoria de 7.7% >= 2% (MAE 4.938 -> 4.560)",
+  "arquivo_modelo": "models/historico/modelo_c20261123T025339Z-gh3_random_forest.joblib",
+  "promovido_em": "2026-11-23T02:54:00+00:00",
   "anterior": {
-    "cycle_id": "c20261122T161514Z-gh1",
+    "cycle_id": "c20261122T215332Z-gh2",
     "algoritmo": "random_forest",
-    "data_version": "v1-91bac956",
-    "val_mae": 5.331081308868057,
-    "run_id": "3248a8cbb1754dc38bdd69e081df704b",
-    "arquivo_modelo": "models/historico/modelo_c20261122T161514Z-gh1_random_forest.joblib"
+    "data_version": "v2-fb30fed2",
+    "val_mae": 4.938242489625901,
+    "run_id": "5f280380f0e9481d9b798bbbbdc04091",
+    "arquivo_modelo": "models/historico/modelo_c20261122T215332Z-gh2_random_forest.joblib"
   },
   "ultima_avaliacao": {
-    "cycle_id": "c20261122T215332Z-gh2",
-    "data_version": "v2-fb30fed2",
+    "cycle_id": "c20261123T025339Z-gh3",
+    "data_version": "v3-ac533899",
     "decisao": "promovido",
-    "motivo": "melhoria de 7.4% >= 2% (MAE 5.331 -> 4.938)",
+    "motivo": "melhoria de 7.7% >= 2% (MAE 4.938 -> 4.560)",
     "desafiante": "random_forest",
-    "mae_desafiante": 4.938242489625901,
-    "mae_vigente_reavaliado": 5.331081308868057,
-    "run_id_desafiante": "5f280380f0e9481d9b798bbbbdc04091"
+    "mae_desafiante": 4.560007889121022,
+    "mae_vigente_reavaliado": 4.9382424896259005,
+    "run_id_desafiante": "61fba9214c8f49828c328fd16fa12410"
   }
 }
