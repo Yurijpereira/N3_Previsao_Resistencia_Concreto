@@ -75,7 +75,11 @@ def f3(x):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--repo", default="https://github.com/rafaelgadotti/N3_Analise_Preditiva", help="link do repositório GitHub")
+    ap.add_argument(
+        "--repo",
+        default="https://github.com/Yurijpereira/N3_Previsao_Resistencia_Concreto",
+        help="link do repositório GitHub",
+    )
     args = ap.parse_args()
 
     hist = pd.read_csv(EV / "historico_ciclos.csv")
