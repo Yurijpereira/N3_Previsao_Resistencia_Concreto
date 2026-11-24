@@ -2,7 +2,7 @@
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
@@ -25,7 +25,7 @@ def carregar_config():
 
 
 def novo_cycle_id():
-    agora = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    agora = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     run = os.environ.get("GITHUB_RUN_NUMBER")
     return f"c{agora}" + (f"-gh{run}" if run else "-local")
 
@@ -55,12 +55,11 @@ def gatilho_execucao():
 
 
 # ---------------------------------------------------------------- MLflow
-def _corrigir_caminhos_mlflow(db: Path, raiz_artefatos: Path):
+def _corrigir_caminhos_mlflow(db: Path, novo: str) -> None:
     """O MLflow grava caminhos absolutos de artefatos. Como o runner do GitHub e a máquina
     local usam pastas diferentes, reescrevemos o prefixo para a raiz atual do repositório."""
     if not db.exists():
         return
-    novo = raiz_artefatos.as_uri()  # file:///.../mlartifacts
     con = sqlite3.connect(db)
     try:
         cur = con.cursor()
@@ -97,10 +96,32 @@ def configurar_mlflow(cfg=None):
     db = RAIZ / cfg["mlflow"]["tracking_uri"].replace("sqlite:///", "")
     artefatos = RAIZ / cfg["mlflow"]["artifacts_dir"]
     artefatos.mkdir(exist_ok=True)
-    _corrigir_caminhos_mlflow(db, artefatos)
+    _corrigir_caminhos_mlflow(db, artefatos.as_uri())
     mlflow.set_tracking_uri(f"sqlite:///{db}")
     nome = cfg["mlflow"]["experimento"]
     if mlflow.get_experiment_by_name(nome) is None:
         mlflow.create_experiment(nome, artifact_location=artefatos.as_uri())
     mlflow.set_experiment(nome)
     return mlflow
+
+
+def preparar_mlflow_para_publicacao() -> None:
+    """Retira o caminho da máquina do arquivo que será versionado."""
+    cfg = carregar_config()["mlflow"]
+    db = RAIZ / cfg["tracking_uri"].removeprefix("sqlite:///")
+    uri_publica = f"file:///{cfg['artifacts_dir']}"
+    _corrigir_caminhos_mlflow(db, uri_publica)
+    with sqlite3.connect(db) as conexao:
+        conexao.execute(
+            "UPDATE experiments SET artifact_location = ? WHERE experiment_id = 0",
+            (f"{uri_publica}/default",),
+        )
+        conexao.commit()
+        conexao.execute("VACUUM")
+
+    artefatos = RAIZ / cfg["artifacts_dir"]
+    uri_local = artefatos.as_uri()
+    for arquivo in artefatos.glob("models/*/artifacts/MLmodel"):
+        texto = arquivo.read_text(encoding="utf-8")
+        if uri_local in texto:
+            arquivo.write_text(texto.replace(uri_local, uri_publica), encoding="utf-8")

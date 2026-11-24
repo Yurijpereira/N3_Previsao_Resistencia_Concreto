@@ -54,6 +54,9 @@ def versao_dados(df: pd.DataFrame, lotes: list[str]) -> str:
     return f"v{len(lotes)}-{hashlib.sha256(conteudo).hexdigest()[:8]}"
 
 
-def carregar_holdout(cfg):
-    d = RAIZ / cfg["dados"]["holdout_dir"]
-    return pd.read_csv(d / "validacao.csv"), pd.read_csv(d / "teste.csv")
+def carregar_validacao(cfg: dict) -> pd.DataFrame:
+    return pd.read_csv(RAIZ / cfg["dados"]["holdout_dir"] / "validacao.csv")
+
+
+def carregar_teste(cfg: dict) -> pd.DataFrame:
+    return pd.read_csv(RAIZ / cfg["dados"]["holdout_dir"] / "teste.csv")

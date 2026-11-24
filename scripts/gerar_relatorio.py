@@ -10,6 +10,7 @@ O nome do arquivo vira a legenda (ex.: 01_actions_schedule.png -> "actions sched
 import argparse
 import json
 from datetime import date
+from html import escape
 from pathlib import Path
 
 import pandas as pd
@@ -18,8 +19,16 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table,
-                                TableStyle)
+from reportlab.platypus import (
+    Image,
+    KeepTogether,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 RAIZ = Path(__file__).resolve().parents[1]
 EV = RAIZ / "evidencias"
@@ -64,13 +73,14 @@ def f3(x):
     return "-" if x is None or (isinstance(x, float) and pd.isna(x)) else f"{float(x):.3f}"
 
 
-def main():
+def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--repo", default="", help="link do repositório GitHub")
+    ap.add_argument("--repo", default="https://github.com/rafaelgadotti/N3_Analise_Preditiva", help="link do repositório GitHub")
     args = ap.parse_args()
 
     hist = pd.read_csv(EV / "historico_ciclos.csv")
     ciclos = [EV / c for c in hist["cycle_id"]]
+    linhas_historico = hist.to_dict("records")
     ctxs = [json.loads((c / "contexto.json").read_text(encoding="utf-8")) for c in ciclos]
     decs = [json.loads((c / "decisao.json").read_text(encoding="utf-8")) for c in ciclos]
     com_lote = [i for i, c in enumerate(ctxs) if c.get("lote")]
@@ -79,6 +89,21 @@ def main():
     i_drift = next((i for i, c in enumerate(ctxs) if c.get("drift_alerta")), None)
     manifesto = json.loads((RAIZ / "models/modelo_vigente.json").read_text(encoding="utf-8"))
     gatilhos = hist["gatilho"].value_counts().to_dict()
+    n_validacao = len(pd.read_csv(RAIZ / "data/holdout/validacao.csv"))
+    previsoes = pd.read_csv(ciclos[-1] / "previsoes_teste.csv")
+    met_teste = ctxs[-1]["teste"]
+    previsoes["erro"] = previsoes["previsao"] - previsoes["resistencia"]
+    previsoes["faixa"] = pd.cut(
+        previsoes["resistencia"], [-float("inf"), 20, 40, 60, float("inf")],
+        labels=["Até 20", "Acima de 20 até 40", "Acima de 40 até 60", "Acima de 60"],
+    )
+    erros = previsoes.groupby("faixa", observed=True).agg(
+        n=("erro", "size"), mae=("erro_abs", "mean"), vies=("erro", "mean"),
+    )
+    tabela_erros = [["Resistência medida (MPa)", "Ensaios", "MAE (MPa)", "Erro com sinal (MPa)"]]
+    tabela_erros.extend(
+        [faixa, n, f3(mae), f"{vies:+.3f}"] for faixa, n, mae, vies in erros.itertuples()
+    )
 
     doc = SimpleDocTemplate(str(RAIZ / "reports/relatorio_n3.pdf"), pagesize=A4, leftMargin=2.2 * cm,
                             rightMargin=2.2 * cm, topMargin=2 * cm, bottomMargin=2 * cm,
@@ -98,7 +123,7 @@ def main():
           Paragraph("<b>Integrantes</b><br/>" + "<br/>".join(INTEGRANTES), ParagraphStyle("i", parent=P, alignment=TA_CENTER, fontSize=11.5, leading=17)),
           Spacer(1, 1 * cm),
           Paragraph("Prof. M. Sc. Rodrigo Hagstrom", ParagraphStyle("p", parent=P, alignment=TA_CENTER)),
-          Paragraph(f"Repositório: {args.repo or '(link do repositório)'}", ParagraphStyle("r", parent=P, alignment=TA_CENTER)),
+          Paragraph(f"Repositório: {escape(args.repo)}", ParagraphStyle("r", parent=P, alignment=TA_CENTER)),
           Paragraph(f"Jaraguá do Sul, {date.today():%d/%m/%Y}", ParagraphStyle("d", parent=P, alignment=TA_CENTER)),
           PageBreak()]
 
@@ -106,7 +131,7 @@ def main():
     s += [Paragraph("1. Problema, dados e desenho da avaliação", H1),
           Paragraph("O objetivo é prever a <b>resistência à compressão do concreto (MPa)</b> a partir da composição da mistura e da "
                     "idade do corpo de prova. Trata-se de um problema de <b>regressão</b> com aplicação direta no controle de qualidade: "
-                    "estimar a resistência antes do ensaio destrutivo ajuda a ajustar traços e reduzir desperdício.", P),
+                    "concreteiras, laboratórios e equipes de controle de qualidade podem comparar traços e priorizar ensaios. A confirmação da resistência exige ensaio em laboratório.", P),
           tabela([
               ["Item", "Definição"],
               ["Fonte e licença", "UCI Machine Learning Repository - Concrete Compressive Strength (I-Cheng Yeh, 1998). Licença CC BY 4.0."],
@@ -114,15 +139,19 @@ def main():
               ["Variável-alvo", "resistencia (MPa)."],
               ["Atributos", "cimento, escoria, cinza_volante, agua, superplastificante, agregado_graudo, agregado_miudo, idade + 4 derivados."],
               ["Tamanho", "1.030 registros, 25 duplicatas exatas removidas antes da divisão -> 1.005 registros únicos."],
+              ["Exploração da base", "Resistência de 2,33 a 82,60 MPa. Idades de 1 a 365 dias, com 425 ensaios aos 28 dias."],
               ["Métrica principal", "MAE (erro absoluto médio, MPa), a minimizar. Está na unidade do problema, é fácil de comunicar e é menos sensível a poucos erros grandes que o RMSE. RMSE e R<super>2</super> são registrados como apoio."],
-              ["Particionamento", "Com seed fixa: 20% teste reservado (201) · 15% validação fixa (151) · 653 restantes divididos em 4 lotes que chegam um por ciclo."],
+              ["Particionamento", f"Por grupos de traços: {ctxs[i_ult]['n_treino']} ensaios no treino (em lotes), {n_validacao} na validação fixa e {len(previsoes)} no teste reservado."],
               ["Chegada de novos dados", "Cada execução agendada incorpora o próximo lote de data/raw/ ainda não processado (controle em data/state/estado_ingestao.json)."],
           ], [4.2 * cm, 12.4 * cm]),
           Spacer(1, 6),
           Paragraph("<b>Protocolo.</b> O conjunto de <b>teste</b> nunca participa de decisões. Ele só é usado no notebook 05 para "
                     "medir o desempenho final do modelo vigente. Todas as decisões recorrentes (vencedor do ciclo e promoção) usam a "
                     "<b>validação fixa</b>, que é igual em todos os ciclos e por isso torna o vigente e o desafiante comparáveis. A "
-                    "validação cruzada de 5 folds no treino é registrada como informação complementar.", P),
+                    "validação cruzada de 5 folds também agrupa por traço e refaz a seleção de atributos e o pré-processamento em cada fold.", P),
+          Paragraph("<b>Por que agrupar?</b> Há ensaios de uma mesma composição em várias idades. Todos ficam na mesma "
+                    "partição para que o teste represente traços inéditos. O agrupamento usa seis ingredientes e mantém "
+                    "juntos até os traços que diferem só no superplastificante, variável com ausências simuladas.", P),
           Paragraph("<b>Simulação dos lotes.</b> O dataset não tem ordem temporal, então a chegada de dados foi simulada. Os lotes 1 a 3 são "
                     "aleatórios. O lote 4 reúne os corpos de prova com idade >= 90 dias e simula uma mudança de perfil dos dados. Foram "
                     "injetados problemas controlados para exercitar o ETL: 3 valores ausentes no lote 2, além de 5 linhas repetidas do lote 1 "
@@ -141,7 +170,7 @@ def main():
         "<b>Esquema:</b> se faltar alguma coluna, o ciclo falha e nada é promovido.",
         "<b>Faixas físicas plausíveis</b> por variável. Linhas inválidas são rejeitadas, como a de água negativa no lote 3.",
         "<b>Duplicatas:</b> são removidas dentro do lote e também em relação ao que já foi incorporado (hash por linha), para que o mesmo dado não entre duas vezes.",
-        "<b>Ausentes:</b> são mantidos e imputados pela mediana <i>dentro do Pipeline</i>, ajustado somente no treino, o que evita vazamento.",
+        "<b>Ausentes:</b> alvo e ingredientes da chave de traço são obrigatórios. Entradas opcionais são imputadas pela mediana dentro do pipeline, com ajuste só no treino.",
         "<b>Outliers (IQR):</b> são apenas reportados. Idades de 180 a 365 dias e resistências altas são reais e importantes para o modelo.",
     ])
     s += [tabela(linhas_etl, [1.2 * cm, 2.1 * cm, 1.9 * cm, 2 * cm, 2.2 * cm, 2.3 * cm, 1.6 * cm, 2.4 * cm]),
@@ -151,7 +180,7 @@ def main():
                     "resistência é aproximadamente logarítmico no tempo). Todo o pré-processamento fica em um <i>Pipeline</i> do "
                     "scikit-learn (FunctionTransformer -> ColumnTransformer com as features eleitas -> SimpleImputer -> StandardScaler) "
                     "serializado junto com o modelo. Assim, a previsão aplica exatamente as mesmas transformações.", P),
-          Paragraph("<b>Versionamento.</b> Cada ciclo recebe um <i>cycle_id</i> (data/hora UTC + número da execução no GitHub) e um "
+          Paragraph("<b>Versionamento.</b> Cada ciclo recebe um <i>cycle_id</i> (data/hora UTC com origem local ou número da execução no GitHub) e um "
                     "<i>data_version</i> (quantidade de lotes + hash SHA-256 do treino acumulado). Esses identificadores aparecem em todos os "
                     "runs do MLflow, nas evidências e no manifesto.", P)]
 
@@ -173,17 +202,14 @@ def main():
           tabela(lv, [4.6 * cm, 2 * cm, 1.4 * cm, 1.4 * cm, 1.4 * cm, 2.2 * cm, 1.6 * cm]),
           Paragraph(f"Tabela 2 - Votação do ciclo {i_ult + 1} ({ctxs[i_ult]['lote']}, {ctxs[i_ult]['n_treino']} linhas de treino).", CAP),
           figura(c_ult / "votacao_features.png", 12, f"Figura 1 - Votos por feature no ciclo {i_ult + 1}."),
-          Paragraph("Ao longo dos ciclos, o conjunto eleito foi: " + "; ".join(
-              f"ciclo {k}: {f.replace('|', ', ')}" for k, f in enumerate(hist["features_eleitas"], 1)) + ". "
-              "A votação favoreceu os atributos derivados, sobretudo <i>aglomerante_total</i>, <i>log_idade</i> e as relações "
-              "água/cimento e água/aglomerante. Isso é coerente com a tecnologia do concreto e mostra que a engenharia de "
-              "atributos agregou informação.", P)]
+          Paragraph("A lista de cada ciclo aparece no histórico. Os votos indicam quais atributos os métodos priorizaram "
+                    "para este conjunto de dados.", P)]
 
     # ------------------------------------------------------------ 4 competição
     comp = pd.read_csv(c_ult / "comparacao_modelos.csv", index_col=0)
     lc = [["Ciclo", "Lote", "n treino", "MAE Ridge (A)", "MAE RF (B)", "Vencedor"]]
-    for k, r in enumerate(hist.itertuples(), 1):
-        lc.append([k, r.lote, r.n_treino, f3(r.mae_ridge), f3(r.mae_random_forest), r.vencedor])
+    for k, r in enumerate(linhas_historico, 1):
+        lc.append([k, ctxs[k - 1]["lote"] or "nenhum", r["n_treino"], f3(r["mae_ridge"]), f3(r["mae_random_forest"]), r["vencedor"]])
     s += [Paragraph("4. Competição entre dois algoritmos", H1),
           Paragraph("O notebook 03 treina o <b>Modelo A - Ridge</b> (alpha = 1,0) e o <b>Modelo B - Random Forest Regressor</b> "
                     "(100 árvores, max_depth = 12, min_samples_leaf = 2) com as <b>mesmas features eleitas</b>, o mesmo treino e a mesma "
@@ -194,20 +220,17 @@ def main():
               [f"{k} - {r['algoritmo']}", f3(r["val_mae"]), f3(r["val_rmse"]), f3(r["val_r2"]), f"{r['cv_mae_media']:.3f} ± {r['cv_mae_desvio']:.3f}"]
               for k, r in comp.iterrows()] + [["Baseline (média)", f3(decs[i_ult]["baseline_val_mae"]), "-", "-", "-"]],
               [4.4 * cm, 2.4 * cm, 2.4 * cm, 2.2 * cm, 3.6 * cm]),
-          Paragraph(f"Tabela 3 - Comparação no ciclo {i_ult + 1} (validação fixa, {151} amostras).", CAP),
+          Paragraph(f"Tabela 3 - Comparação no ciclo {i_ult + 1} (validação fixa, {n_validacao} amostras).", CAP),
           tabela(lc, [1.3 * cm, 2.4 * cm, 1.9 * cm, 3 * cm, 3 * cm, 3 * cm]),
           Paragraph("Tabela 4 - MAE na validação fixa em todos os ciclos.", CAP),
           figura(c_ult / "comparacao_modelos.png", 10, f"Figura 2 - MAE dos candidatos e do baseline no ciclo {i_ult + 1}."),
-          Paragraph("<b>Leitura dos resultados.</b> O Random Forest venceu em todos os ciclos. Um ponto interessante é que, nos primeiros "
-                    "ciclos, o Ridge tinha CV no treino razoável, mas MAE alto na validação. Isso acontece porque o treino ainda não tinha "
-                    "corpos de prova com mais de 56 dias e o modelo linear extrapola mal a idade, enquanto a validação fixa contém idades de "
-                    "até 365 dias. Quando o lote 4 trouxe esses casos, o MAE do Ridge caiu bastante. Esse comportamento mostra por que a "
-                    "decisão usa uma validação fixa e representativa, e não apenas a CV do treino.", P)]
+          Paragraph("O menor MAE na validação fixa determina o vencedor do ciclo. Após o lote 4, a comparação "
+                    "inclui o aprendizado com ensaios em idades mais altas.", P)]
 
     # ------------------------------------------------------------ 5 promoção
     lp = [["Ciclo", "data_version", "Vencedor (MAE)", "Vigente antes", "Decisão", "Vigente após"]]
-    for k, (r, d) in enumerate(zip(hist.itertuples(), decs), 1):
-        lp.append([k, r.data_version, f"{r.vencedor} ({f3(d['mae_vencedor'])})", f3(d["mae_vigente_antes"]),
+    for k, (r, d) in enumerate(zip(linhas_historico, decs, strict=True), 1):
+        lp.append([k, r["data_version"], f"{r['vencedor']} ({f3(d['mae_vencedor'])})", f3(d["mae_vigente_antes"]),
                    d["decisao"].upper(), f"ciclo {list(hist['cycle_id']).index(d['vigente_apos']['cycle_id']) + 1}"])
     s += [Paragraph("5. Eleição do vencedor e promoção controlada", H1),
           Paragraph("O notebook 04 primeiro verifica a integridade do ciclo: os dois candidatos existem, pertencem ao mesmo "
@@ -220,7 +243,7 @@ def main():
     ])
     s += [tabela(lp, [1.2 * cm, 2.6 * cm, 3.8 * cm, 2.4 * cm, 2.4 * cm, 2.6 * cm]),
           Paragraph("Tabela 5 - Decisões automáticas por ciclo.", CAP),
-          Paragraph("Motivos registrados: " + " ".join(f"<b>Ciclo {k}:</b> {d['motivo']}." for k, d in enumerate(decs, 1)), P),
+          Paragraph("Motivos registrados: " + " ".join(f"<b>Ciclo {k}:</b> {escape(d['motivo'])}." for k, d in enumerate(decs, 1)), P),
           Paragraph(f"<b>Modelo vigente ao final:</b> {manifesto['algoritmo']}, promovido no ciclo "
                     f"{list(hist['cycle_id']).index(manifesto['cycle_id']) + 1} (data_version {manifesto['data_version']}), "
                     f"MAE de validação {manifesto['val_mae']:.3f} MPa, run_id <i>{manifesto['run_id']}</i>.", P)]
@@ -235,7 +258,7 @@ def main():
                     "de teste do vigente. Os runs dos candidatos também recebem a tag <i>resultado</i> (promovido / venceu_mas_nao_promovido / perdeu).", P),
           Paragraph("<b>Persistência entre execuções.</b> Os runners do GitHub Actions são temporários. Por isso, ao final de cada ciclo bem-sucedido, "
                     "o workflow faz <b>commit</b> no próprio repositório de <i>mlflow.db</i>, <i>mlartifacts/</i>, <i>models/</i>, <i>evidencias/</i>, "
-                    "do treino acumulado e do estado de ingestão, e também publica tudo como <b>artifact baixável</b>. O ciclo seguinte faz checkout "
+                    "do treino acumulado e do estado de ingestão, e disponibiliza um pacote de evidências para download. O ciclo seguinte faz checkout "
                     "desse estado e recupera o manifesto e o modelo vigente sem depender do runner anterior. Como o MLflow grava caminhos absolutos, "
                     "<i>src/utils.py</i> reescreve automaticamente o prefixo dos artefatos para a pasta atual. O histórico pode ser consultado tanto "
                     "no runner quanto localmente com <i>mlflow ui --backend-store-uri sqlite:///mlflow.db</i>.", P)]
@@ -243,7 +266,7 @@ def main():
     # ------------------------------------------------------------ 7 arquitetura
     s += [Paragraph("7. Arquitetura do fluxo único", H1),
           Paragraph("Existe um único workflow, <i>.github/workflows/pipeline_mlops.yml</i>, com gatilho <i>schedule</i> "
-                    "(cron <i>17,47 * * * *</i>) e <i>workflow_dispatch</i> para depuração. Ele tem um job sequencial, com "
+                    "semanal (<i>23 9 * * 1</i>, segunda, 06h23 em Brasília) e execução manual. Ele tem um job sequencial, com "
                     "<i>concurrency</i> para impedir ciclos simultâneos. Os notebooks são executados em ordem com <i>jupyter nbconvert --execute</i>; "
                     "se qualquer etapa falhar, o job para antes do commit e nenhuma promoção é persistida.", P),
           tabela([
@@ -258,13 +281,13 @@ def main():
               ["9", "Regra de promoção", "04_selecao_promocao", "modelo_vigente.json, decisao.json"],
               ["10", "Previsões + evidências", "05_previsoes · src/finalizar_ciclo.py", "previsoes_teste.csv, resumo, commit, artifact"],
           ], [1 * cm, 4.4 * cm, 5.8 * cm, 5.4 * cm]),
-          Paragraph("Tabela 6 - Etapas do fluxo obrigatório e onde cada uma é implementada.", CAP)]
+          Paragraph("Tabela 6 - Etapas e saídas do pipeline.", CAP)]
 
     # ------------------------------------------------------------ 8 evidências
     le = [["Ciclo", "cycle_id", "Gatilho", "Lote", "Decisão", "MAE teste (vigente)", "R<super>2</super> teste"]]
-    for k, (r, c) in enumerate(zip(hist.itertuples(), ctxs), 1):
-        le.append([k, r.cycle_id, r.gatilho, r.lote, r.decisao, f3(c["teste"]["mae"]), f3(c["teste"]["r2"])])
-    gat_txt = ", ".join(f"{v} via <i>{k}</i>" for k, v in gatilhos.items())
+    for k, (r, c) in enumerate(zip(linhas_historico, ctxs, strict=True), 1):
+        le.append([k, r["cycle_id"], r["gatilho"], c["lote"] or "nenhum", r["decisao"], f3(c["teste"]["mae"]), f3(c["teste"]["r2"])])
+    gat_txt = ", ".join(f"{v} com gatilho <i>{k}</i>" for k, v in gatilhos.items())
     s += [Paragraph("8. Evidências de execução e previsões", H1),
           Paragraph(f"Foram executados <b>{len(hist)} ciclos</b> ({gat_txt}). O notebook 05 carrega o modelo vigente pelo manifesto, "
                     "junto com seu pré-processamento e suas features, e gera previsões para o <b>teste reservado</b>, que nunca foi usado "
@@ -272,11 +295,18 @@ def main():
                     "os gráficos, o <i>decisao.json</i> e um <i>resumo.md</i>, que também aparece no Summary da execução no GitHub.", P),
           tabela(le, [1.1 * cm, 4.9 * cm, 1.9 * cm, 2 * cm, 2.1 * cm, 2.6 * cm, 1.8 * cm]),
           Paragraph("Tabela 7 - Ciclos executados e desempenho do vigente no teste reservado.", CAP),
-          Paragraph("A comparação entre ciclos mostra o que mudou a cada lote: a votação foi refeita, os dois algoritmos foram retreinados "
-                    "e o vigente foi promovido sempre que a melhoria superou 2%. No ciclo sem dados novos, o desafiante ficou igual ao "
-                    "vigente e o modelo foi <b>mantido</b> automaticamente.", P),
+          Paragraph(f"No último ciclo, o erro absoluto médio no teste foi de <b>{met_teste['mae']:.2f} MPa</b>, frente a "
+                    f"{met_teste['baseline_mae']:.2f} MPa para o baseline. O RMSE foi de {met_teste['rmse']:.2f} MPa e "
+                    f"o R<super>2</super> foi {met_teste['r2']:.3f}.", P),
           figura(EV / "evolucao_ciclos.png", 14, "Figura 3 - Evolução do MAE de validação dos candidatos por ciclo."),
-          figura(ciclos[-1] / "previsto_vs_real.png", 8.5, "Figura 4 - Previsto x real no teste reservado (modelo vigente final).")]
+          figura(ciclos[-1] / "previsto_vs_real.png", 8.5, "Figura 4 - Previsto x real no teste reservado (modelo vigente final)."),
+          Paragraph("Erros por faixa de resistência", H2),
+          tabela(tabela_erros, [5.2 * cm, 2 * cm, 3.2 * cm, 4.4 * cm]),
+          Paragraph("O erro com sinal é previsão menos medição. Valores negativos indicam subestimação. "
+                    "As faixas com menos ensaios têm estimativas de erro mais sensíveis a casos individuais.", P),
+          Paragraph("Demonstração", H2),
+          Paragraph("Na raiz do repositório, execute <i>python -m src.prever</i> para estimar a resistência em MPa aos 28 dias. "
+                    "Acrescente <i>--idade 90</i> para repetir com a mesma composição aos 90 dias.", P)]
     prints = sorted((RAIZ / "reports/prints").glob("*.png")) if (RAIZ / "reports/prints").exists() else []
     if prints:
         s.append(Paragraph("Capturas de tela", H2))
@@ -289,8 +319,6 @@ def main():
           Paragraph("<b>Problema identificado.</b> O pipeline incorpora lotes automaticamente. Se um lote tiver perfil diferente do que "
                     "o modelo conhece, as métricas podem mudar sem que o grupo perceba o motivo, e a decisão de promoção passa a ser "
                     "tomada sobre dados que mudaram.", P),
-          Paragraph("<b>Justificativa.</b> Nenhum critério de 1 a 9 exige observar a distribuição dos dados de entrada, mas na prática "
-                    "essa é uma das primeiras causas de degradação de modelos em produção.", P),
           Paragraph("<b>Solução implementada.</b> <i>src/drift.py</i> aplica o teste de Kolmogorov-Smirnov, comparando cada variável do "
                     "lote novo (já limpo) com o treino acumulado até o ciclo anterior (alpha = 0,05). Se 25% ou mais das variáveis "
                     "apresentarem drift, é emitido um <b>alerta</b>.", P),
@@ -302,12 +330,9 @@ def main():
         ld = [["Variável", "KS", "p-valor", "Média treino", "Média lote", "Drift"]]
         for _, r in dr.iterrows():
             ld.append([r["variavel"], f"{r['ks_estatistica']:.3f}", f"{r['p_valor']:.2e}", f"{r['media_referencia']:.2f}", f"{r['media_lote']:.2f}", "sim" if r["drift"] else "não"])
-        sem_alerta = [str(k + 1) for k in com_lote if k != i_drift and ctxs[k].get("drift_resumo")]
-        s += [Paragraph(f"<b>Resultado demonstrado.</b> Nos ciclos {', '.join(sem_alerta)}, os lotes aleatórios não apresentaram drift. "
-                        f"No ciclo {i_drift + 1} ({ctxs[i_drift]['lote']}), o alerta foi disparado: {ctxs[i_drift]['drift_resumo']}. "
-                        "A idade média do lote foi muito maior que a do treino, como esperado pela simulação. O alerta explica a queda "
-                        "acentuada do MAE do Ridge nesse ciclo e sinaliza que o modelo passou a ver uma região do espaço de entrada que "
-                        "antes não conhecia.", P),
+        s += [Paragraph(f"No ciclo {i_drift + 1} ({ctxs[i_drift]['lote']}), o alerta foi disparado. "
+                        f"{escape(ctxs[i_drift]['drift_resumo'])}. "
+                        "A mudança indica que o lote merece revisão antes de usar previsões nesse perfil.", P),
               tabela(ld, [4 * cm, 1.8 * cm, 2.4 * cm, 2.6 * cm, 2.6 * cm, 1.6 * cm]),
               Paragraph(f"Tabela 8 - Teste KS do ciclo {i_drift + 1}.", CAP)]
         if (ciclos[i_drift] / "drift.png").exists():
@@ -317,24 +342,20 @@ def main():
     s += [Paragraph("10. Limitações", H1)]
     s += bullets([
         "O dataset é pequeno e de laboratório, e a chegada de dados é <b>simulada</b> por lotes, sem ordem temporal real.",
-        "A votação é feita uma vez sobre todo o treino acumulado. A CV de 5 folds no treino usa esse conjunto já eleito e por isso tende a ser levemente otimista; por esse motivo, as decisões usam a validação fixa, que é independente.",
-        "A validação fixa tem 151 amostras. Diferenças pequenas de MAE estão sujeitas a ruído, e é por isso que existe o limiar de 2%.",
+        f"A validação fixa tem {n_validacao} amostras. Diferenças pequenas de MAE estão sujeitas a ruído. O limiar de 2% é uma regra operacional.",
+        "A base não identifica tipo de cimento, cura ou temperatura. O desempenho com materiais locais ainda precisa ser validado.",
         "Os hiperparâmetros são fixos (não há busca), o que deixa o pipeline simples e rápido, mas provavelmente abaixo do desempenho ótimo.",
-        "Versionar o estado do MLflow no repositório é simples e gratuito, mas o repositório cresce cerca de 5 MB por ciclo. Por isso, após a demonstração, o agendamento deve passar a ser semanal.",
         "O teste KS só detecta mudança nas distribuições marginais, não em relações entre variáveis.",
     ])
     s += [Paragraph("11. Conclusões", H1),
-          Paragraph("O projeto entrega um pipeline MLOps funcional, reprodutível e versionado. Um único workflow agendado incorpora dados "
-                    "novos, faz ETL sem vazamento, elege features pela votação de três métodos, coloca dois algoritmos para competir com o "
-                    "mesmo protocolo, registra tudo no MLflow com identificadores de ciclo e decide automaticamente entre promover e manter "
-                    "o modelo vigente. Os resultados mostram o comportamento esperado: a cada lote novo o erro diminuiu e o modelo foi promovido "
-                    f"(MAE de teste de {ctxs[0]['teste']['mae']:.2f} para {ctxs[-1]['teste']['mae']:.2f} MPa), e sem dados novos o vigente foi "
-                    "preservado. O monitoramento de drift complementa o fluxo ao explicar mudanças de desempenho que, de outra forma, passariam "
-                    "despercebidas.", P),
+          Paragraph(f"O teste em traços inéditos mostrou um MAE de {met_teste['mae']:.2f} MPa para "
+                    f"<i>{manifesto['algoritmo']}</i>, contra {met_teste['baseline_mae']:.2f} MPa para a previsão pela média. "
+                    "O modelo pode apoiar a comparação de traços. A tabela de erros por faixa orienta a interpretação "
+                    "e a confirmação da resistência continua a depender de ensaio.", P),
           Paragraph("Referências", H2),
           Paragraph("YEH, I-C. Modeling of strength of high-performance concrete using artificial neural networks. <i>Cement and Concrete "
                     "Research</i>, v. 28, n. 12, p. 1797-1808, 1998.", P),
-          Paragraph("UCI Machine Learning Repository. Concrete Compressive Strength. https://archive.ics.uci.edu/dataset/165", P),
+          Paragraph("UCI Machine Learning Repository. Concrete Compressive Strength. https://doi.org/10.24432/C5PK67", P),
           Paragraph("PEDREGOSA, F. et al. Scikit-learn: Machine Learning in Python. JMLR, v. 12, p. 2825-2830, 2011. · MLflow Documentation. https://mlflow.org/docs", P)]
 
     def rodape(canvas, doc_):

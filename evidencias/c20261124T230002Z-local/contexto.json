@@ -1,0 +1,86 @@
+{
+  "cycle_id": "c20261124T230002Z-local",
+  "data_version": "v3-c6be3d56",
+  "lote": "lote_03.csv",
+  "n_treino": 542,
+  "gatilho": "local",
+  "etl": {
+    "linhas_recebidas": 106,
+    "removidas_alvo_ausente": 0,
+    "removidas_traco_incompleto": 0,
+    "removidas_fora_da_faixa": 1,
+    "removidas_duplicadas_no_lote": 0,
+    "removidas_ja_incorporadas": 5,
+    "ausentes_para_imputacao": 0,
+    "linhas_aceitas": 100
+  },
+  "drift_resumo": "1/9 variáveis com drift (KS, p<0.05)",
+  "drift_alerta": false,
+  "run_etl": "869456a25e944a6c84d0733fabb454ae",
+  "features_eleitas": [
+    "relacao_agua_cimento",
+    "log_idade",
+    "relacao_agua_aglomerante",
+    "cimento",
+    "aglomerante_total",
+    "idade"
+  ],
+  "criterio_votacao": ">= 2 votos",
+  "selecao_por_metodo": {
+    "selectkbest_f_regression": [
+      "aglomerante_total",
+      "idade",
+      "log_idade",
+      "relacao_agua_aglomerante",
+      "relacao_agua_cimento"
+    ],
+    "importancia_random_forest": [
+      "cimento",
+      "idade",
+      "log_idade",
+      "relacao_agua_aglomerante",
+      "relacao_agua_cimento"
+    ],
+    "rfe_ridge": [
+      "aglomerante_total",
+      "agua",
+      "cimento",
+      "log_idade",
+      "relacao_agua_cimento"
+    ]
+  },
+  "run_votacao": "209780ffef1640529e3bc7e9f86b1e0b",
+  "resultados": {
+    "A": {
+      "algoritmo": "ridge",
+      "run_id": "91031a1604ac40bb9f1bac19652f7edc",
+      "cv_mae_media": 5.578594007092105,
+      "cv_rmse_media": 7.271490007240358,
+      "cv_r2_media": 0.7824987737490545,
+      "cv_mae_desvio": 0.261189065600209,
+      "val_mae": 6.156788515146427,
+      "val_rmse": 8.11106779453723,
+      "val_r2": 0.7807303273366475
+    },
+    "B": {
+      "algoritmo": "random_forest",
+      "run_id": "d56ac50e520e47abb2ed5f3edfd163c1",
+      "cv_mae_media": 4.671044271658293,
+      "cv_rmse_media": 6.534691017027738,
+      "cv_r2_media": 0.819921660483588,
+      "cv_mae_desvio": 0.7316225221743742,
+      "val_mae": 5.783596377498736,
+      "val_rmse": 7.496559791362997,
+      "val_r2": 0.8126962277934424
+    }
+  },
+  "baseline_val_mae": 14.09985211684178,
+  "decisao": "mantido",
+  "motivo": "melhoria de -1.0% < 2% exigidos (vigente 5.728 x desafiante 5.784)",
+  "teste": {
+    "mae": 5.35786964431842,
+    "rmse": 7.392706870247779,
+    "r2": 0.8026216225589803,
+    "baseline_mae": 13.444427320743795
+  }
+}

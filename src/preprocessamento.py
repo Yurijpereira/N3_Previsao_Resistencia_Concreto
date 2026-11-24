@@ -7,6 +7,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 from .ingestao import hash_linhas
+from .particionamento import COLUNAS_TRACO
 
 ATRIBUTOS_DERIVADOS = [
     "relacao_agua_cimento",      # principal fator da resistência (lei de Abrams)
@@ -58,7 +59,7 @@ def validar_esquema(df: pd.DataFrame, cfg):
 
 def limpar_lote(novo: pd.DataFrame, existente: pd.DataFrame | None, cfg):
     """Remove linhas inválidas e duplicadas (no lote e em relação ao já incorporado).
-    Valores ausentes NÃO são removidos: são imputados no Pipeline (ajustado só no treino)."""
+    Ausências fora da chave de composição e do alvo são imputadas no Pipeline."""
     validar_esquema(novo, cfg)
     cols = cfg["dados"]["atributos_originais"] + [cfg["dados"]["alvo"]]
     novo = novo[cols].copy()
@@ -66,13 +67,15 @@ def limpar_lote(novo: pd.DataFrame, existente: pd.DataFrame | None, cfg):
 
     alvo = cfg["dados"]["alvo"]
     sem_alvo = novo[alvo].isna()
+    sem_traco = novo[list(COLUNAS_TRACO)].isna().any(axis=1)
     viol = pd.Series(False, index=novo.index)
     for col in cols:
         lo, hi = cfg["validacao"]["minimos"][col], cfg["validacao"]["maximos"][col]
         viol |= novo[col].notna() & ((novo[col] < lo) | (novo[col] > hi))
     rel["removidas_alvo_ausente"] = int(sem_alvo.sum())
-    rel["removidas_fora_da_faixa"] = int((viol & ~sem_alvo).sum())
-    novo = novo[~(viol | sem_alvo)]
+    rel["removidas_traco_incompleto"] = int((sem_traco & ~sem_alvo).sum())
+    rel["removidas_fora_da_faixa"] = int((viol & ~(sem_alvo | sem_traco)).sum())
+    novo = novo[~(viol | sem_alvo | sem_traco)]
 
     dup_interno = novo.duplicated()
     rel["removidas_duplicadas_no_lote"] = int(dup_interno.sum())

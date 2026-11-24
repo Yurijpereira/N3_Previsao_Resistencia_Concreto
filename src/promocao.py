@@ -1,7 +1,7 @@
 """Eleição do vencedor do ciclo e regra de promoção do modelo vigente."""
 import json
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import joblib
 import pandas as pd
@@ -41,6 +41,8 @@ def decidir(mae_desafiante, mae_vigente, mae_baseline, cfg):
         return False, f"desafiante (MAE {mae_desafiante:.3f}) não supera o baseline ({mae_baseline:.3f})"
     if mae_vigente is None:
         return True, "não há modelo vigente: primeiro modelo é promovido"
+    if mae_vigente == 0:
+        return False, "o modelo vigente já tem erro zero na validação"
     limite = mae_vigente * (1 - p["melhoria_minima_relativa"])
     melhoria = (mae_vigente - mae_desafiante) / mae_vigente
     if mae_desafiante <= limite:
@@ -56,7 +58,7 @@ def promover(arquivo_candidato, info: dict) -> dict:
     manifesto = {
         **info,
         "arquivo_modelo": str(destino.relative_to(RAIZ)),
-        "promovido_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "promovido_em": datetime.now(UTC).isoformat(timespec="seconds"),
         "anterior": None if anterior is None else {
             k: anterior.get(k) for k in ("cycle_id", "algoritmo", "data_version", "val_mae", "run_id", "arquivo_modelo")
         },

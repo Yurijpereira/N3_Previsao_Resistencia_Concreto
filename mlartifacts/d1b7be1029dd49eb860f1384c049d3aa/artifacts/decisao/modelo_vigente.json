@@ -1,0 +1,41 @@
+{
+  "cycle_id": "c20261124T225921Z-local",
+  "data_version": "v2-075a21dd",
+  "algoritmo": "random_forest",
+  "candidato": "B",
+  "features": [
+    "aglomerante_total",
+    "log_idade",
+    "relacao_agua_cimento",
+    "relacao_agua_aglomerante",
+    "idade"
+  ],
+  "metrica": "mae",
+  "val_mae": 5.728106157267119,
+  "val_rmse": 7.64672732255769,
+  "val_r2": 0.8051171091951149,
+  "run_id": "ef0946625cbb4dffbbdc204e1ef04b0a",
+  "mlflow_model_uri": "runs:/ef0946625cbb4dffbbdc204e1ef04b0a/modelo",
+  "decisao": "promovido",
+  "motivo": "melhoria de 7.7% >= 2% (MAE 6.209 -> 5.728)",
+  "arquivo_modelo": "models/historico/modelo_c20261124T225921Z-local_random_forest.joblib",
+  "promovido_em": "2026-11-24T22:59:49+00:00",
+  "anterior": {
+    "cycle_id": "c20261124T225840Z-local",
+    "algoritmo": "random_forest",
+    "data_version": "v1-f78d2fdb",
+    "val_mae": 6.2089885277572305,
+    "run_id": "76cea35c1358426abb21eaf95061d355",
+    "arquivo_modelo": "models/historico/modelo_c20261124T225840Z-local_random_forest.joblib"
+  },
+  "ultima_avaliacao": {
+    "cycle_id": "c20261124T230002Z-local",
+    "data_version": "v3-c6be3d56",
+    "decisao": "mantido",
+    "motivo": "melhoria de -1.0% < 2% exigidos (vigente 5.728 x desafiante 5.784)",
+    "desafiante": "random_forest",
+    "mae_desafiante": 5.783596377498736,
+    "mae_vigente_reavaliado": 5.728106157267118,
+    "run_id_desafiante": "d56ac50e520e47abb2ed5f3edfd163c1"
+  }
+}

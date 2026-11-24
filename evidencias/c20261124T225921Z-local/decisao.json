@@ -1,0 +1,17 @@
+{
+  "cycle_id": "c20261124T225921Z-local",
+  "data_version": "v2-075a21dd",
+  "vencedor": "B",
+  "vencedor_algoritmo": "random_forest",
+  "mae_vencedor": 5.7281,
+  "mae_perdedor": 6.0461,
+  "mae_vigente_antes": 6.209,
+  "baseline_val_mae": 14.125,
+  "decisao": "promovido",
+  "motivo": "melhoria de 7.7% >= 2% (MAE 6.209 -> 5.728)",
+  "vigente_apos": {
+    "cycle_id": "c20261124T225921Z-local",
+    "algoritmo": "random_forest",
+    "val_mae": 5.728106157267119
+  }
+}

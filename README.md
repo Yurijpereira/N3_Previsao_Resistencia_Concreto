@@ -1,101 +1,74 @@
-# Trabalho N3 · Análise Preditiva · Pipeline MLOps
+# Previsão da resistência à compressão do concreto
 
-**Previsão da resistência à compressão do concreto** com um pipeline único e agendado que, a cada ciclo:
-incorpora um novo lote de dados → faz ETL e validação → monitora drift → elege features por votação de 3 métodos →
-treina 2 algoritmos (Ridge × Random Forest) → elege o vencedor → decide **promover ou manter** o modelo vigente →
-registra tudo no MLflow → gera previsões e evidências.
+Projeto N3 · Análise Preditiva · Católica de Santa Catarina
 
-Católica de Santa Catarina · Prof. M. Sc. Rodrigo Hagstrom
-**Integrantes:** Luciano L. Zimmermann · Luiz Eduardo Uber · Matheus Lorenzetti · Rafael Gadotti · Yuri J. Pereira
+Professor Rodrigo Hagstrom
 
----
+## Problema e dados
 
-## 1. Problema e dados
-| | |
-|---|---|
-| Tarefa | Regressão: `resistencia` (MPa) |
-| Dados | [UCI – Concrete Compressive Strength](https://archive.ics.uci.edu/dataset/165/concrete+compressive+strength) (Yeh, 1998), licença CC BY 4.0. 1.030 linhas, sendo 1.005 após remover duplicatas |
-| Atributos | cimento, escória, cinza volante, água, superplastificante, agregado graúdo, agregado miúdo (kg/m³) e idade (dias), mais 4 derivados |
-| Métrica principal | **MAE** (MPa), a minimizar |
-| Particionamento | teste reservado 20% · validação fixa 15% · 4 lotes de treino que chegam um por ciclo |
+Estimamos a **resistência à compressão do concreto, em MPa**, a partir da composição da mistura e da idade. Concreteiras, laboratórios e equipes de controle de qualidade podem usar a estimativa para comparar traços e priorizar ensaios. A confirmação da resistência exige ensaio de laboratório.
 
-`scripts/preparar_lotes.py` gera, uma única vez, `data/holdout/` e `data/raw/lote_01..04.csv`. Os lotes trazem problemas
-propositais para o ETL tratar: ausentes no lote 2, duplicatas e uma linha inválida no lote 3, e uma mudança de perfil (drift) no lote 4.
+A base [Concrete Compressive Strength](https://doi.org/10.24432/C5PK67), de I-Cheng Yeh, vem da UCI e tem licença CC BY 4.0. Ela reúne 1.030 ensaios com as quantidades dos sete ingredientes (kg/m³), a idade (dias) e a resistência medida (MPa). A resistência varia de **2,33 a 82,60 MPa**. As idades vão de **1 a 365 dias**, com 425 ensaios aos 28 dias. A análise dos lotes registra valores ausentes, duplicatas, violações de faixa e valores extremos.
 
-## 2. Estrutura
-```
-.github/workflows/pipeline_mlops.yml   # workflow ÚNICO (schedule + workflow_dispatch)
-config/config.yaml                     # dados, métodos, votação, algoritmos, métrica, limiar de promoção
-data/raw/                              # lotes que chegam a cada ciclo
-data/holdout/                          # validacao.csv (decisões) e teste.csv (reservado)
-data/processed/treino_acumulado.csv    # treino incorporado até o ciclo atual
-data/state/estado_ingestao.json        # lotes já processados + ciclos
-notebooks/01_etl.ipynb … 05_previsoes.ipynb
-src/                                   # ingestao, preprocessamento, features, modelagem, promocao, drift
-models/modelo_vigente.json             # manifesto do modelo vigente
-models/historico/                      # todos os modelos já promovidos (preservados)
-mlflow.db + mlartifacts/               # tracking MLflow (versionado no repositório)
-evidencias/<cycle_id>/                 # votação, comparação, decisão, drift, previsões, notebooks executados
-evidencias/historico_ciclos.csv        # uma linha por ciclo
-reports/relatorio_n3.pdf
-scripts/                               # preparar_lotes, executar_ciclo (local), reset_estado, gerar_relatorio
-```
+## Demonstração
 
-## 3. Instalação e execução local
+Use Python 3.13 ou 3.14. Na raiz do repositório, crie e ative um ambiente virtual e instale as dependências.
+
 ```bash
-python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-bash scripts/executar_ciclo.sh        # roda 01→05 + evidências (1 ciclo = 1 lote novo)
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m src.prever
+python -m src.prever --idade 90
 ```
-Cada execução incorpora o próximo lote. Sem lote novo, o ciclo roda com os mesmos dados (mesmo `data_version`) e o
-vigente tende a ser mantido. Para recomeçar do zero: `python scripts/reset_estado.py`.
 
-No Windows sem bash, rode os comandos `jupyter nbconvert --to notebook --execute notebooks/0X_....ipynb` em ordem e depois `python -m src.finalizar_ciclo`.
+No PowerShell, ative o ambiente com `.venv\Scripts\Activate.ps1`. Com o modelo incluído na entrega, o exemplo retorna **41,96 MPa aos 28 dias** e **55,03 MPa aos 90 dias** para a mesma composição. O script valida os valores de entrada. Use `python -m src.prever --help` para ver os parâmetros e seus valores padrão.
 
-## 4. Execução agendada (GitHub Actions)
-1. Suba o repositório no GitHub (branch padrão `main`).
-2. Vá em **Settings → Actions → General → Workflow permissions** e marque **Read and write permissions**.
-3. O workflow roda pelo `cron`. Durante a coleta de evidências ele rodou a cada 30 min (`17,47 * * * *`). Agora está semanal (`23 9 * * 1`, segunda 06:23 BRT). O GitHub pode atrasar o agendamento.
-4. Ao fim de cada execução, o próprio workflow faz **commit do estado** (MLflow, modelo vigente, evidências) e publica
-   um **artifact** `resultados-ciclo-N`. O próximo ciclo parte desse estado; nada depende do runner anterior.
-5. O **resumo da execução** (aba *Summary*) mostra a decisão do ciclo e o **alerta de drift**, quando houver.
-6. Para demonstrar de novo, use **Run workflow** (workflow_dispatch) ou volte o cron para uma frequência maior.
+## Como treinamos e avaliamos
 
-Se qualquer etapa falhar, o job para antes do commit, e **nenhuma promoção é persistida**.
+1. **Preparação.** Removemos 25 duplicatas exatas, mantivemos os extremos plausíveis e usamos quatro lotes para simular a chegada de dados. O ETL rejeita valores fora das faixas e remove duplicatas. Valores ausentes em variáveis opcionais são imputados pela mediana, calculada no treino.
+2. **Divisão por traço.** As diferentes idades de uma composição ficam na mesma partição. A chave usa os seis ingredientes sempre observados, sem o superplastificante, que pode estar ausente. Essa escolha agrupa até traços que diferem só no aditivo. Ficaram **670 ensaios no treino, 131 na validação e 204 no teste**, sem grupos em comum.
+3. **Modelos.** Comparamos Ridge e Random Forest com um baseline que prevê a média. Ambos usam os mesmos dados e atributos eleitos por três métodos de seleção. Entre os atributos derivados estão a relação água/cimento, a relação água/aglomerante, o total de aglomerante e a transformação logarítmica da idade. A validação cruzada também separa por traço e refaz a seleção de atributos em cada fold.
+4. **Escolha e teste.** O menor MAE na validação fixa define o vencedor. Para substituir um modelo vigente, o desafiante precisa superar o baseline e melhorar o MAE em pelo menos 2%. O teste reservado é usado para medir o desempenho, fora das decisões de treino e promoção.
 
-### Resultados obtidos no GitHub Actions
-| Ciclo | Gatilho | Lote | MAE val Ridge | MAE val RF | Decisão | Drift |
-|---|---|---|---|---|---|---|
-| 1 | workflow_dispatch | lote_01 | 7,794 | 5,331 | promovido (1º modelo) | - |
-| 2 | **schedule** | lote_02 | 7,904 | 4,938 | promovido (+7,4%) | não |
-| 3 | **schedule** | lote_03 | 7,722 | 4,560 | promovido (+7,7%) | não |
-| 4 | workflow_dispatch | lote_04 | 6,120 | 4,264 | promovido (+6,5%) | **alerta (7/9 variáveis)** |
-| 5 | **schedule** | sem lote novo | 6,120 | 4,264 | **mantido** (0% < 2%) | - |
+## Resultados
 
-O modelo vigente final é o Random Forest do ciclo 4, com MAE de **4,67 MPa** e R² de 0,867 no teste reservado. Os detalhes de cada ciclo estão em `evidencias/<cycle_id>/` e `evidencias/historico_ciclos.csv`. O relatório completo está em `reports/relatorio_n3.pdf`, gerado por `python scripts/gerar_relatorio.py --repo <link>`.
+| No teste reservado (204 ensaios de 85 grupos inéditos) | Resultado |
+|---|---:|
+| MAE do Random Forest | **4,19 MPa** |
+| MAE da previsão pela média (baseline) | 13,64 MPa |
+| RMSE do Random Forest | 6,01 MPa |
+| R² do Random Forest | 0,869 |
 
-## 5. Consultar o MLflow
+O Random Forest foi promovido no quarto ciclo, com MAE de 4,82 MPa na validação. No quinto ciclo, sem dados novos, continuou vigente. Em concretos com resistência medida acima de 60 MPa, o erro absoluto médio foi de **6,72 MPa** e a previsão ficou, em média, **4,59 MPa abaixo** da medição (17 ensaios).
+
+O **MAE** é o erro absoluto médio, em MPa. O **RMSE** dá mais peso aos erros maiores. As estimativas foram avaliadas com uma base de laboratório. Materiais locais, tipo de cimento, cura e temperatura podem alterar o desempenho.
+
+O [relatório](reports/relatorio_n3.pdf) detalha os experimentos, os erros e as referências. O [histórico](evidencias/historico_ciclos.csv) registra as decisões de cada ciclo. O [manifesto](models/modelo_vigente.json) identifica o modelo usado na demonstração.
+
+## Reproduzir o pipeline
+
 ```bash
-mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000     # http://localhost:5000
+bash scripts/executar_ciclo.sh
 ```
-Experimento `n3-resistencia-concreto`. Todos os runs têm as tags `cycle_id`, `data_version` e `etapa`
-(`etl`, `votacao`, `treino`, `decisao`, `previsoes`). Filtro útil: `tags.cycle_id = '<id>'`.
-Antes de abrir a UI, rode qualquer notebook (ou `python -c "from src.utils import configurar_mlflow; configurar_mlflow()"`):
-os caminhos dos artefatos são ajustados para a pasta local automaticamente.
 
-## 6. Reproduzir previsões
-```python
-import joblib, json, pandas as pd
-m = json.load(open("models/modelo_vigente.json"))
-modelo = joblib.load(m["arquivo_modelo"])          # Pipeline com pré-processamento + features eleitas
-nova = pd.DataFrame([{"cimento": 350, "escoria": 100, "cinza_volante": 0, "agua": 180,
-                      "superplastificante": 6, "agregado_graudo": 970, "agregado_miudo": 780, "idade": 28}])
-print(modelo.predict(nova))
-```
-(execute a partir da raiz do repositório, pois o pipeline usa `src.preprocessamento.criar_atributos`).
+Cada execução roda os cinco notebooks em ordem e incorpora um lote, quando disponível. O checkout já traz os quatro lotes processados e o modelo vigente. Para repetir desde o primeiro lote, use **uma cópia de trabalho separada** e execute `python scripts/reset_estado.py`, que apaga o histórico e o estado dessa cópia. Em seguida, rode o comando de ciclo quatro vezes e, para demonstrar a manutenção, mais uma vez sem lote novo. Para regenerar os lotes a partir da base da UCI, execute `python -m scripts.preparar_lotes` antes do primeiro ciclo.
 
-## 7. Regras definidas antes do treinamento
-- **Votação:** cada método (SelectKBest f_regression, importância RF, RFE-Ridge) vota no seu top-5. A feature é eleita com ≥ 2 votos. O mínimo é 4 features, completando pelo menor ranking médio.
-- **Competição:** mesmas features, mesmo treino e mesma seed. Vence o menor MAE na validação fixa (empate → Ridge).
-- **Promoção:** o desafiante precisa superar o baseline (média) **e** ser ≥ 2% melhor que o vigente reavaliado na mesma validação.
-- **Drift (recurso extra):** teste KS por variável (α = 0,05). Gera alerta se ≥ 25% das variáveis apresentarem drift.
+O [workflow](.github/workflows/pipeline_mlops.yml) permite execução manual e agendamento semanal. A revisão por traço foi reexecutada localmente. Para consultar o MLflow, rode `python -c "from src.utils import configurar_mlflow; configurar_mlflow()"` e depois `mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000`.
+
+## Roteiro para a apresentação — 1º de dezembro
+
+1. **Problema.** “Recebemos a composição e a idade do concreto. O modelo estima a resistência em MPa.”
+2. **Experimento.** “Agrupamos ensaios da mesma composição para testar em traços inéditos. Comparamos dois modelos com a previsão pela média.”
+3. **Resultado.** Mostrem o MAE e o gráfico previsto × real do relatório. Expliquem onde o erro aumenta e que o uso é de triagem.
+4. **Demonstração.** Executem os exemplos de 28 e 90 dias e expliquem como interpretar a estimativa. Cada integrante apresenta a parte em que trabalhou.
+
+## Equipe
+
+Luciano L. Zimmermann · Luiz Eduardo Uber · Matheus Lorenzetti · Rafael Gadotti · Yuri J. Pereira
+
+## Referências
+
+- YEH, I.-C. *Modeling of strength of high-performance concrete using artificial neural networks*. Cement and Concrete Research, 28(12), 1797–1808, 1998.
+- YEH, I.-C. *Concrete Compressive Strength*. UCI Machine Learning Repository, 1998. [Dataset e licença](https://doi.org/10.24432/C5PK67).
+- PEDREGOSA, F. et al. *Scikit-learn: Machine Learning in Python*. JMLR, 12, 2825–2830, 2011.

@@ -6,7 +6,12 @@ import json
 import os
 import shutil
 
-from .utils import DIR_CICLO, RAIZ, carregar_contexto, dir_evidencias
+from .utils import (
+    RAIZ,
+    carregar_contexto,
+    dir_evidencias,
+    preparar_mlflow_para_publicacao,
+)
 
 
 def main():
@@ -51,7 +56,10 @@ def main():
     if os.environ.get("GITHUB_ENV"):
         with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
             f.write(f"CYCLE_ID={cid}\nDECISAO={dec['decisao']}\n")
-    shutil.copy2(DIR_CICLO / "contexto.json", ev / "contexto.json")
+    for resultado in ctx["resultados"].values():
+        resultado.pop("arquivo", None)
+    (ev / "contexto.json").write_text(json.dumps(ctx, indent=2, ensure_ascii=False), encoding="utf-8")
+    preparar_mlflow_para_publicacao()
 
 
 if __name__ == "__main__":

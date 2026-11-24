@@ -2,7 +2,7 @@
 
 1. Renomeia colunas para português.
 2. Remove duplicatas exatas ANTES da divisão (evita a mesma amostra em treino e teste).
-3. Separa teste (20%) e validação fixa (15%) com seed fixa -> data/holdout/.
+3. Separa teste (20% dos grupos de traços) e validação fixa (~15%) -> data/holdout/.
 4. Divide o restante em 4 lotes que simulam a chegada de novos dados:
    - lote_01: base inicial (aleatória)
    - lote_02, lote_03: lotes aleatórios adicionais
@@ -11,13 +11,15 @@
    - lote_02: 3 valores ausentes em 'superplastificante'
    - lote_03: 5 linhas repetidas do lote_01 + 1 linha inválida (água negativa)
 
-Uso: python scripts/preparar_lotes.py
+Uso: python -m scripts.preparar_lotes
 """
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import yaml
+
+from src.particionamento import grupos_traco, separar
 
 RAIZ = Path(__file__).resolve().parents[1]
 CFG = yaml.safe_load((RAIZ / "config/config.yaml").read_text(encoding="utf-8"))
@@ -31,17 +33,18 @@ MAPA = {
 
 
 def main():
+    if (RAIZ / CFG["dados"]["estado"]).exists() or (RAIZ / "models/modelo_vigente.json").exists():
+        raise SystemExit("Já existe um ciclo treinado. Prepare os lotes em uma cópia zerada do projeto.")
+
     df = pd.read_csv(RAIZ / CFG["dados"]["fonte_original"]).rename(columns=MAPA)
     n0 = len(df)
     df = df.drop_duplicates().reset_index(drop=True)
     print(f"Original: {n0} linhas | após remover duplicatas: {len(df)}")
 
-    df = df.sample(frac=1.0, random_state=SEED).reset_index(drop=True)
-    n_teste = int(round(len(df) * CFG["dados"]["frac_teste"]))
-    n_val = int(round(len(df) * CFG["dados"]["frac_validacao"]))
-    teste = df.iloc[:n_teste]
-    validacao = df.iloc[n_teste:n_teste + n_val]
-    resto = df.iloc[n_teste + n_val:].reset_index(drop=True)
+    resto, validacao, teste = separar(
+        df, CFG["dados"]["frac_teste"], CFG["dados"]["frac_validacao"], SEED,
+    )
+    resto = resto.sample(frac=1.0, random_state=SEED).reset_index(drop=True)
 
     # lote_04: amostras de longa idade (>= 90 dias) -> mudança de perfil dos dados
     lote_04 = resto[resto["idade"] >= 90]
@@ -68,7 +71,10 @@ def main():
     for i, lote in enumerate([lote_01, lote_02, lote_03, lote_04], start=1):
         lote.to_csv(lotes / f"lote_{i:02d}.csv", index=False)
         print(f"lote_{i:02d}: {len(lote)} linhas")
-    print(f"validacao: {len(validacao)} | teste: {len(teste)}")
+    for nome, particao in [("treino", resto), ("validação", validacao), ("teste", teste)]:
+        # O treino inclui os ensaios de longa idade reservados para o lote 4.
+        dados = pd.concat([particao, lote_04]) if nome == "treino" else particao
+        print(f"{nome}: {len(dados)} ensaios | {grupos_traco(dados).nunique()} grupos de traços")
 
 
 if __name__ == "__main__":
