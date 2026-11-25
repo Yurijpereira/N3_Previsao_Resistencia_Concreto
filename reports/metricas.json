@@ -1,0 +1,66 @@
+{
+  "melhor_modelo": "Gradient Boosting",
+  "teste": {
+    "Baseline (média)": {
+      "MAE": 14.400957,
+      "RMSE": 17.806181,
+      "R2": -0.000222
+    },
+    "Regressão linear": {
+      "MAE": 8.47617,
+      "RMSE": 10.723812,
+      "R2": 0.637212
+    },
+    "Regressão linear + atributos": {
+      "MAE": 5.571385,
+      "RMSE": 7.342983,
+      "R2": 0.829902
+    },
+    "Random Forest": {
+      "MAE": 3.994783,
+      "RMSE": 5.697446,
+      "R2": 0.897596
+    },
+    "Gradient Boosting": {
+      "MAE": 3.479904,
+      "RMSE": 5.253936,
+      "R2": 0.912919
+    }
+  },
+  "erro_por_idade": [
+    {
+      "faixa_idade": "1-7 dias",
+      "n": 58,
+      "MAE": 3.052
+    },
+    {
+      "faixa_idade": "8-28 dias",
+      "n": 95,
+      "MAE": 3.524
+    },
+    {
+      "faixa_idade": "29-90 dias",
+      "n": 29,
+      "MAE": 3.863
+    },
+    {
+      "faixa_idade": "91-365 dias",
+      "n": 23,
+      "MAE": 3.895
+    }
+  ],
+  "intervalo_80": {
+    "margem_MPa": 5.797630307261892,
+    "cobertura_teste": 0.8097560975609757
+  },
+  "importancia_permutacao": {
+    "cimento": 10.526,
+    "idade": 8.466,
+    "escoria": 4.391,
+    "agua": 2.842,
+    "cinza_volante": 2.019,
+    "agregado_miudo": 0.545,
+    "superplastificante": 0.386,
+    "agregado_graudo": 0.373
+  }
+}

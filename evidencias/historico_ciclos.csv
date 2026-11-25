@@ -1,6 +1,0 @@
-cycle_id,gatilho,lote,data_version,n_treino,features_eleitas,mae_ridge,mae_random_forest,vencedor,mae_vigente_antes,decisao,vigente_apos,drift_alerta
-c20261124T225840Z-local,local,lote_01.csv,v1-f78d2fdb,342,idade|aglomerante_total|log_idade|relacao_agua_aglomerante|cimento,6.5611,6.209,random_forest,,promovido,random_forest@c20261124T225840Z-local,False
-c20261124T225921Z-local,local,lote_02.csv,v2-075a21dd,442,aglomerante_total|log_idade|relacao_agua_cimento|relacao_agua_aglomerante|idade,6.0461,5.7281,random_forest,6.209,promovido,random_forest@c20261124T225921Z-local,False
-c20261124T230002Z-local,local,lote_03.csv,v3-c6be3d56,542,relacao_agua_cimento|log_idade|relacao_agua_aglomerante|cimento|aglomerante_total|idade,6.1568,5.7836,random_forest,5.7281,mantido,random_forest@c20261124T225921Z-local,False
-c20261124T230040Z-local,local,lote_04.csv,v4-16552413,670,relacao_agua_aglomerante|log_idade|cimento|idade|aglomerante_total|relacao_agua_cimento,6.1573,4.8161,random_forest,5.7281,promovido,random_forest@c20261124T230040Z-local,True
-c20261124T230119Z-local,local,-,v4-16552413,670,relacao_agua_aglomerante|log_idade|cimento|idade|aglomerante_total|relacao_agua_cimento,6.1573,4.8161,random_forest,4.8161,mantido,random_forest@c20261124T230040Z-local,False
